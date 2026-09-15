@@ -16,24 +16,27 @@ Customs/
         │   ├── EnforceAllergenSignOffBeforeApprovalHandler.java
         │   ├── EnforceMinimumReviewWindowHandler.java
         │   ├── RequireDetailedJustificationForHighImpactSubmissionHandler.java
+        │   ├── RequireImpactNotesBeforeSubmissionHandler.java
         │   └── ChangeRequestAuditTrailHandler.java
-        └── extensions/customization/        ← Gates 2-5: config seeded on startup
+        └── extensions/customization/        ← Gate 2: config seeded on startup
             └── NordicSnacksCustomizationSeeder.java
 ```
 
 ## Two kinds of customization
 
-Core exposes five "Customization Gates". Only **Gate 1** has a Java interface to
-implement (`fr.formcraft.sdk.workflow.ChangeRequestTransitionHandler`) — **Gates
-2-5** are config-driven: a "customization" there is rows in core's own tables,
-normally created by calling core's REST API by hand.
+Core exposes five "Customization Gates" in total, but this module deliberately
+sticks to just the first two. Only **Gate 1** has a Java interface to implement
+(`fr.formcraft.sdk.workflow.ChangeRequestTransitionHandler`) — **Gate 2** is
+config-driven: a "customization" there is rows in core's own table, normally
+created by calling core's REST API by hand. (Gates 3-5 exist in core but aren't
+used by this module.)
 
 **Gate 1 (Java code)** — a `@Component` implementing an SDK interface, compiled
 against core with a `provided`-scope dependency, so the built jar contains only
 that customization's own classes, never a copy of core. At runtime, the jar sits
 alongside core's classes on the same JVM classpath — there's no registry to wire
 up, Spring's component scan (rooted at `fr.formcraft`, core's base package) finds
-any `@Component` wherever it is on the classpath. Nordic Snacks Co.'s five
+any `@Component` wherever it is on the classpath. Nordic Snacks Co.'s six
 handlers, all vetoing or observing `ChangeRequest` transitions:
 
 | Handler | Vetoes | Rule |
@@ -42,29 +45,24 @@ handlers, all vetoing or observing `ChangeRequest` transitions:
 | `EnforceAllergenSignOffBeforeApprovalHandler` | → APPROVED | Allergen-relevant changes need `"ALLERGEN-REVIEWED"` in the decision comment |
 | `EnforceMinimumReviewWindowHandler` | → APPROVED | At least 4 hours must pass between request and approval |
 | `RequireDetailedJustificationForHighImpactSubmissionHandler` | → SUBMITTED | High-impact requests need a reason ≥ 40 characters |
+| `RequireImpactNotesBeforeSubmissionHandler` | → SUBMITTED | Submission requires a non-blank impact field |
 | `ChangeRequestAuditTrailHandler` | *(non-vetoing)* | Logs every transition via core's `AuditService`, including ones core itself doesn't log |
 
 That last one demonstrates that a Gate 1 handler isn't limited to guarding a
 transition — since it runs in core's own Spring context, it can inject and call
 *any* core service (not just SDK interfaces) to add side effects.
 
-**Gates 2-5 (config, not code)** — `NordicSnacksCustomizationSeeder` is an
-`ApplicationRunner` `@Component` that, on startup, injects core's `CustomAttributeService`
-/ `EventActionRuleService` / `AccessRuleService` / `ReportTemplateService` beans
-(the same ones core's own REST controllers call) and registers Nordic Snacks
-Co.'s configuration through them — idempotently, so re-running it on every
-restart is safe:
-
-| Gate | What it seeds |
-|---|---|
-| 2 — custom attributes | `nordic_organic_certified` (RAW_MATERIAL), `recyclable_packaging_pct` (PACKAGING), `eu_novel_food_status` (FINISHED_PRODUCT, regex-validated) |
-| 3 — event → notification rules | Quality also hears about every rejected change request, and about approved changes to finished products (additive on top of core's defaults) |
-| 4 — access rules | `VIEWER` and `PURCHASING` are denied `CHANGE_REQUEST_DECIDE` and `NON_CONFORMANCE_CLOSE` |
-| 5 — report templates | `NORDIC_ORGANIC_COMPLIANCE` — organic/novel-food status across products |
+**Gate 2 (config, not code)** — `NordicSnacksCustomizationSeeder` is an
+`ApplicationRunner` `@Component` that, on startup, injects core's
+`CustomAttributeService` bean (the same one core's own REST controller calls)
+and registers three custom attributes through it — idempotently, so re-running
+it on every restart is safe: `nordic_organic_certified` (RAW_MATERIAL),
+`recyclable_packaging_pct` (PACKAGING), `eu_novel_food_status`
+(FINISHED_PRODUCT, regex-validated).
 
 This is the same "no core code change" idea as Gate 1, just expressed as data
-instead of a class: nothing here is possible without core's SDK services already
-being public Spring beans, but nothing here touches a core file either.
+instead of a class: nothing here is possible without core's SDK service already
+being a public Spring bean, but nothing here touches a core file either.
 
 ## Building a customization
 
