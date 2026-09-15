@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>fr.formcraft</groupId>
+    <artifactId>formcraft-plm-customs-nordic-snacks</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>FormCraft PLM Customs — Nordic Snacks Co.</name>
+    <description>
+        Client-specific customizations for Nordic Snacks Co., built and deployed
+        independently of the FormCraft PLM core application (a separate repository).
+        Implements core's SDK extension points (fr.formcraft.sdk.*) but never bundles
+        core's classes — core supplies them on the runtime classpath wherever this
+        jar is deployed. See README.md for how this plugs into the base app.
+    </description>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Compile-time only. Requires fr.formcraft:formcraft-plm-core:1.0.0 to be
+             resolvable from a Maven repository — e.g. run `mvn install` in the core
+             repo first, or publish it to a shared repository your build can reach. -->
+        <dependency>
+            <groupId>fr.formcraft</groupId>
+            <artifactId>formcraft-plm-core</artifactId>
+            <version>1.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
