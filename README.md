@@ -18,8 +18,8 @@ Customs/
         │   ├── RequireDetailedJustificationForHighImpactSubmissionHandler.java
         │   ├── RequireImpactNotesBeforeSubmissionHandler.java
         │   └── ChangeRequestAuditTrailHandler.java
-        └── extensions/customization/        ← Gate 2: config seeded on startup
-            └── NordicSnacksCustomizationSeeder.java
+    └── UI-product-attributes-config/        ← Gate 2: declarative attribute config
+        └── product-attributes.json
 ```
 
 ## Two kinds of customization
@@ -52,17 +52,24 @@ That last one demonstrates that a Gate 1 handler isn't limited to guarding a
 transition — since it runs in core's own Spring context, it can inject and call
 *any* core service (not just SDK interfaces) to add side effects.
 
-**Gate 2 (config, not code)** — `NordicSnacksCustomizationSeeder` is an
-`ApplicationRunner` `@Component` that, on startup, injects core's
-`CustomAttributeService` bean (the same one core's own REST controller calls)
-and registers three custom attributes through it — idempotently, so re-running
-it on every restart is safe: `nordic_organic_certified` (RAW_MATERIAL),
+**Gate 2 (config, not code)** — `UI-product-attributes-config/product-attributes.json`
+declares three custom attributes: `nordic_organic_certified` (RAW_MATERIAL),
 `recyclable_packaging_pct` (PACKAGING), `eu_novel_food_status`
-(FINISHED_PRODUCT, regex-validated).
+(FINISHED_PRODUCT, regex-validated). There's no Java here at all — core's own
+`CustomAttributeConfigLoader` (an `ApplicationRunner` that ships with core, not
+with this module) reads this file on startup and, for any key not already
+defined, calls the exact same `CustomAttributeService.defineAttribute(...)`
+core's own REST controller calls. That in turn adds a real column to
+`products` for the attribute (dynamic DDL, keyed off `dataType`) and writes
+the definition back into this same JSON file — so the file and the database
+are always kept in sync, whether an attribute was added by editing the file
+or by calling the API. Idempotent either way: re-running on every restart, or
+re-defining an already-present key, is a no-op.
 
 This is the same "no core code change" idea as Gate 1, just expressed as data
-instead of a class: nothing here is possible without core's SDK service already
-being a public Spring bean, but nothing here touches a core file either.
+instead of a class: nothing here is possible without core's loader and SDK
+service already existing, but nothing here touches a core file either — and
+unlike before, core itself has no Nordic-Snacks-specific class either.
 
 ## Building a customization
 

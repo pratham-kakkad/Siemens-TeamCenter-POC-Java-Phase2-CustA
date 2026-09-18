@@ -1,0 +1,11 @@
+[ {
+  "attributeKey" : "batch_no",
+  "label" : "test Label",
+  "dataType" : "STRING",
+  "required" : true
+}, {
+  "attributeKey" : "test_3",
+  "label" : "test 3",
+  "dataType" : "STRING",
+  "required" : true
+} ]
